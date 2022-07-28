@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>1901841 | Assignment 5</title>
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.8.0/leaflet.css" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.8.0/leaflet.js"></script>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.15.0/moment.min.js"></script>
+
+    <style>
+        #onemap {
+            height: 800px;
+          }
+    
+        .symbol {
+            text-align: center;
+            color: black;
+            font-size: 20px;
+        }
+
+        .bubble {
+            height: 15px;
+            width: 15px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+    </style>
+</head>
+<body>
+    <div id="onemap"></div>
+</body>
+  
+<script>
+    Promise.all([d3.json("https://api.d.gov.sg/v1/environment/psi")]).then((d) => {
+          var region = d[0].region_metadata;
+          var psi = d[0].items[0].readings.psi_twenty_four_hourly;
+          var colour;
+
+          for (let i = 0; i < region.length; i++) {
+            let loc = region[i].name;
+            if (loc != "national") {
+              if (psi[loc] <= 50) {
+                colour = "#98aba7";
+              } else if (psi[loc] <= 100) {
+                colour = "#ffffff";
+              } else if (psi[loc] <= 200) {
+                colour = "#dff6ff";
+              } else if (psi[loc] <= 300) {
+                colour = "#5d8bf4";
+              } else if (psi[loc] > 300) {
+                colour = "#2d31fa";
+              }
+
+              var circle = L.circle(
+                [region[i].label_location.latitude,
+                  region[i].label_location.longitude,],
+                {
+                  color: colour,
+                  fillColor: colour,
+                  fillOpacity: 0.5,
+                  radius: 1000,
+                }
+              ).addTo(onemap);
+
+              var symbol = L.marker(
+                [
+                  region[i].label_location.latitude,
+                  region[i].label_location.longitude,
+                ],
+                {
+                symbol: L.divIcon({
+                    className: "symbol",
+                    html: psi[loc],
+                  }),
+                }
+              );
+              symbol.addTo(onemap);
+            }
+          }
+        }
+      );
+
+      var middle = L.bounds([1.56073, 104.11475], [1.16, 103.502]).getCenter();
+      var onemap = L.map("onemap", {
+        dragging: false,
+        scrollWheelZoom: false,
+        zoomControl: false,
+      }).setView([middle.x, middle.y], 12);
+
+      var base = L.tileLayer(
+        "https://maps-{s}.onemap.sg/v3/Default/{z}/{x}/{y}.png",
+        {
+          detectRetina: true,
+          maxZoom: 18,
+          minZoom: 11,
+          //Do not remove this attribution
+          attribution:
+            '<img src="https://docs.onemap.sg/maps/images/oneMap64-01.png" style="height:20px;width:20px;">' +
+            'New OneMap | Map d © contributors, <a href="http://SLA.gov.sg">Singapore Land Authority</a>', });
+
+      onemap.setMaxBounds([
+        [1.56073, 104.1147],
+        [1.16, 103.502],
+      ]);
+      base.addTo(onemap);
+
+      var key = L.control({ position: "bottomleft" });
+      key.onAdd = function (onemap) {
+        var div = L.DomUtil.create("div", "info key");
+        (labels = ["<strong>Key</strong>"]),
+          (categories = [
+            "Good",
+            "Moderate",
+            "Unhealthy",
+            "Very Unhealthy",
+            "Hazardous",]);
+        for (var i = 0; i < categories.length; i++) {
+          div.innerHTML += labels.push(
+            '<i class="bubble" style="background:' +getColours(categories[i]) +'"></i> ' + (categories[i] ? categories[i] : "+")
+          );
+        }
+        div.innerHTML = labels.join("<br>");
+        return div;};
+      key.addTo(onemap);
+
+      function getColours(d) {
+        return d == "Good"
+          ? "#98aba7"
+          : d == "Moderate"
+          ? "#ffffff"
+          : d == "Unhealthy"
+          ? "#dff6ff"
+          : d == "Very Unhealthy"
+          ? "#5d8bf4"
+          : "#2d31fa";
+      }
+</script>
+</html>
